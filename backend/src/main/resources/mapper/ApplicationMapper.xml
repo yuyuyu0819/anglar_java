@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  ============================================================================
+   ApplicationMapper の SQL 定義
+
+   namespace には対応する Mapper インターフェースの完全修飾名を書く。
+   各 <select>/<insert>/<update>/<delete> の id がメソッド名と対応する。
+
+   【MyBatis で最初に覚えるべき2つの記法】
+     #{xxx}  … プレースホルダ。PreparedStatement の ? になる。
+               値はドライバ経由で安全にバインドされる。原則こちらを使う。
+     ${xxx}  … 文字列をSQLにそのまま埋め込む。SQLインジェクションの危険があるため
+               「カラム名」「ASC/DESC」など値でないものにだけ、許可リストを通して使う。
+  ============================================================================
+-->
+<mapper namespace="jp.go.sample.backend.domain.repository.ApplicationMapper">
+
+    <!--
+      resultMap … SELECT結果の列を Java オブジェクトのプロパティに対応づける定義。
+
+      application.yml で map-underscore-to-camel-case: true にしているため
+      実は resultType="Application" だけでも自動変換されるが、
+      大規模案件では「どの列がどのフィールドに入るか」を明示するため
+      resultMap を書く規約になっていることが多い。
+    -->
+    <resultMap id="applicationResultMap" type="Application">
+        <id     property="id"             column="id"/>
+        <result property="applicationNo"  column="application_no"/>
+        <result property="applicantName"  column="applicant_name"/>
+        <result property="applicantEmail" column="applicant_email"/>
+        <result property="categoryCode"   column="category_code"/>
+        <!-- JOIN で取得する表示用の項目。application テーブルには存在しない -->
+        <result property="categoryName"   column="category_name"/>
+        <!-- enum は MyBatis 標準の EnumTypeHandler が名前（RECEIVED 等）で相互変換する -->
+        <result property="status"         column="status"/>
+        <result property="appliedOn"      column="applied_on"/>
+        <result property="note"           column="note"/>
+        <result property="version"        column="version"/>
+        <result property="createdAt"      column="created_at"/>
+        <result property="updatedAt"      column="updated_at"/>
+    </resultMap>
+
+    <!--
+      <sql> … SQLの断片に名前を付けて再利用する仕組み。
+      SELECT句や WHERE句を一覧用と件数用で共有でき、修正漏れを防げる。
+    -->
+    <sql id="selectColumns">
+        a.id,
+        a.application_no,
+        a.applicant_name,
+        a.applicant_email,
+        a.category_code,
+        c.name AS category_name,
+        a.status,
+        a.applied_on,
+        a.note,
+        a.version,
+        a.created_at,
+        a.updated_at
+    </sql>
+
+    <!--
+      検索条件（動的SQL）。これが MyBatis の最大の利点。
+
+      <where>  … 内側の <if> が1つも成立しなければ WHERE 句自体を出力せず、
+                 先頭の余分な AND / OR も自動で削除してくれる。
+      <if>     … test 属性の式（OGNL）が true のときだけ中身を出力する。
+    -->
+    <sql id="searchConditions">
+        <where>
+            <!--
+              キーワードは申請番号と申請者氏名の部分一致（OR条件）。
+              前後に % を付けるため文字列連結演算子 || を使っている。
+              #{} を使っているので値そのものは安全にバインドされる。
+
+              ※ 文字列連結の方言に注意
+                  ||     … PostgreSQL / Oracle / H2 / SQLite
+                  CONCAT … PostgreSQL / MySQL / H2 / SQL Server(2012+)
+                  +      … SQL Server
+                MySQL では || が論理ORとして解釈されるため、
+                DBを乗り換える可能性がある場合は注意が必要。
+
+              ※ 厳密には利用者が入力した % や _ をエスケープする必要がある
+                （ESCAPE句の利用）。本サンプルでは割愛している。
+            -->
+            <if test="criteria.keyword != null and criteria.keyword != ''">
+                AND (
+                       a.application_no LIKE '%' || #{criteria.keyword} || '%'
+                    OR a.applicant_name LIKE '%' || #{criteria.keyword} || '%'
+                )
+            </if>
+            <if test="criteria.status != null">
+                AND a.status = #{criteria.status}
+            </if>
+            <if test="criteria.categoryCode != null and criteria.categoryCode != ''">
+                AND a.category_code = #{criteria.categoryCode}
+            </if>
+        </where>
+    </sql>
+
+    <!--
+      一覧取得（ページング）。
+
+      LIMIT / OFFSET は H2・PostgreSQL・MySQL で使える構文。
+      Oracle 11g 以前は ROWNUM を使ったサブクエリ、
+      Oracle 12c 以降は OFFSET n ROWS FETCH NEXT m ROWS ONLY になる。
+      移植時に必ず引っかかる箇所なので覚えておくとよい。
+
+      ORDER BY のカラム名は ${} で埋め込んでいる。
+      値は ApplicationSearchCriteria#getSortColumn() の switch 文で
+      許可リスト化されているため、任意のSQLを注入されることはない。
+    -->
+    <select id="search" resultMap="applicationResultMap">
+        SELECT
+        <include refid="selectColumns"/>
+        FROM application a
+        INNER JOIN application_category c ON c.code = a.category_code
+        <include refid="searchConditions"/>
+        ORDER BY ${criteria.sortColumn} ${criteria.sortDirection}, a.id DESC
+        LIMIT #{criteria.size} OFFSET #{criteria.offset}
+    </select>
+
+    <!--
+      総件数取得。WHERE句を <include> で一覧と共有しているため、
+      条件を追加しても件数側の修正漏れが起きない。
+    -->
+    <select id="countBySearchCriteria" resultType="long">
+        SELECT COUNT(*)
+          FROM application a
+          INNER JOIN application_category c ON c.code = a.category_code
+        <include refid="searchConditions"/>
+    </select>
+
+    <!--
+      1件取得。
+      戻り値を Optional&lt;Application&gt; で受け取れる（MyBatis 3.5 以降の機能）。
+      0件なら Optional.empty() になるため、null チェック漏れを防げる。
+    -->
+    <select id="findById" resultMap="applicationResultMap">
+        SELECT
+        <include refid="selectColumns"/>
+        FROM application a
+        INNER JOIN application_category c ON c.code = a.category_code
+        WHERE a.id = #{id}
+    </select>
+
+    <select id="findByApplicationNo" resultMap="applicationResultMap">
+        SELECT
+        <include refid="selectColumns"/>
+        FROM application a
+        INNER JOIN application_category c ON c.code = a.category_code
+        WHERE a.application_no = #{applicationNo}
+    </select>
+
+    <!--
+      申請番号の採番用に、該当年の最大連番を取得する。
+      'APP-2026-00001' の末尾5桁（= 00001）を数値化して MAX を取る。
+      該当行が無い場合 MAX は NULL になり、Java 側では null の Integer になる。
+
+      RIGHT(文字列, 桁数) は PostgreSQL / H2 / MySQL / SQL Server で使える。
+      Oracle には RIGHT が無いため SUBSTR(application_no, -5) を使う。
+
+      CAST(#{year} AS VARCHAR) と明示的に型変換しているのは、
+      数値パラメータを文字列連結に使う場合に
+      「パラメータの型を決定できない」とDBに判断されるのを避けるため。
+    -->
+    <select id="findMaxSequenceByYear" resultType="java.lang.Integer">
+        SELECT MAX(CAST(RIGHT(application_no, 5) AS INT))
+          FROM application
+         WHERE application_no LIKE 'APP-' || CAST(#{year} AS VARCHAR) || '-%'
+    </select>
+
+    <!--
+      登録。
+      useGeneratedKeys="true" keyProperty="id" を指定すると、
+      INSERT後にDBが採番した値を引数オブジェクトの id に書き戻してくれる。
+      （戻り値は「挿入件数」なので、採番値はこの仕組みで受け取る）
+    -->
+    <insert id="insert" parameterType="Application" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO application (
+            application_no,
+            applicant_name,
+            applicant_email,
+            category_code,
+            status,
+            applied_on,
+            note,
+            version,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{applicationNo},
+            #{applicantName},
+            #{applicantEmail},
+            #{categoryCode},
+            #{status},
+            #{appliedOn},
+            #{note},
+            #{version},
+            #{createdAt},
+            #{updatedAt}
+        )
+    </insert>
+
+    <!--
+      更新（楽観ロック）。
+
+      ポイントは2つ。
+        1. SET version = version + 1  … 更新ごとにバージョンを進める
+        2. WHERE ... AND version = #{version}
+           … 画面が表示していた時点のバージョンと一致する行だけ更新する
+
+      他ユーザーが先に更新していればバージョンが進んでいるため0件更新になる。
+      サービス層はその戻り値0を見て OptimisticLockConflictException を投げる。
+    -->
+    <update id="update" parameterType="Application">
+        UPDATE application
+           SET applicant_name  = #{applicantName},
+               applicant_email = #{applicantEmail},
+               category_code   = #{categoryCode},
+               status          = #{status},
+               applied_on      = #{appliedOn},
+               note            = #{note},
+               version         = version + 1,
+               updated_at      = #{updatedAt}
+         WHERE id      = #{id}
+           AND version = #{version}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM application
+         WHERE id = #{id}
+    </delete>
+
+</mapper>

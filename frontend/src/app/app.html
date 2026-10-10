@@ -1,0 +1,59 @@
+<!--
+  アプリ全体の共通レイアウト。
+
+  <router-outlet /> の位置に、現在のURLに対応する画面コンポーネントが差し込まれる。
+  ページ全体の再読み込みは起きず、この部分だけが差し替わるのが SPA の基本動作。
+-->
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <p class="site-header__title">{{ systemName }}</p>
+    <p class="site-header__env">開発環境</p>
+  </div>
+</header>
+
+<nav class="site-nav" aria-label="メインメニュー">
+  <ul class="site-nav__list">
+    <li>
+      <!--
+        routerLinkActive は、そのリンク先が現在表示中のとき
+        指定したCSSクラスを付与するディレクティブ。
+        [routerLinkActiveOptions]="{ exact: false }" で部分一致にしているため、
+        /applications/3 を見ているときも「申請一覧」が選択状態になる
+      -->
+      <a
+        class="site-nav__link"
+        routerLink="/applications"
+        routerLinkActive="site-nav__link--active"
+        [routerLinkActiveOptions]="{ exact: false }"
+      >
+        申請一覧
+      </a>
+    </li>
+    <li>
+      <a
+        class="site-nav__link"
+        routerLink="/applications/new"
+        routerLinkActive="site-nav__link--active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        申請登録
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<main id="main" class="site-main">
+  <router-outlet />
+</main>
+
+<footer class="site-footer">
+  <p class="site-footer__text">
+    Angular 20 + Spring Boot 3 学習用サンプル / このシステムは架空のものです
+  </p>
+</footer>
+
+<!-- 画面全体に関わる部品。どの画面を表示していても常に存在する -->
+<app-loading-overlay />
+<app-toast-container />

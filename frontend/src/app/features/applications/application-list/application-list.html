@@ -1,0 +1,137 @@
+<!--
+  申請一覧画面のテンプレート。
+
+  【Angular テンプレート構文の要点】
+    {{ value }}            … 値の埋め込み（補間）
+    [prop]="expr"          … プロパティへのバインド（親 → 子 / DOM）
+    (event)="handler()"    … イベントのバインド（DOM → コンポーネント）
+    [formGroup] / formControlName … Reactive Forms との結合
+    @if / @for             … Angular 17 以降の制御フロー構文（旧 *ngIf / *ngFor）
+-->
+<section class="page">
+  <header class="page__header">
+    <div>
+      <h1 class="page__title">申請一覧</h1>
+      <p class="page__description">
+        申請の検索・閲覧・登録を行います。条件を指定して「検索」を押してください。
+      </p>
+    </div>
+    <!--
+      routerLink はページ遷移用のディレクティブ。
+      <a href="..."> と違い、ページ全体を再読み込みせず
+      Angular のルーターが該当コンポーネントだけを差し替える（SPAの要）
+    -->
+    <a class="btn btn--primary" routerLink="/applications/new">新規登録</a>
+  </header>
+
+  <!-- ===================== 検索条件 ===================== -->
+  <form class="search-panel" [formGroup]="searchForm" (ngSubmit)="onSearch()">
+    <div class="search-panel__fields">
+      <div class="field">
+        <label class="field__label" for="keyword">キーワード</label>
+        <input
+          id="keyword"
+          type="text"
+          class="field__input"
+          formControlName="keyword"
+          placeholder="申請番号・申請者氏名"
+          maxlength="100"
+        />
+        <p class="field__hint">申請番号または申請者氏名の部分一致で検索します</p>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="status">ステータス</label>
+        <select id="status" class="field__input" formControlName="status">
+          <option value="">すべて</option>
+          <!--
+            選択肢はAPIから取得したマスタを展開する。
+            track には一意なキーを指定する（@for では必須）
+          -->
+          @for (option of statuses(); track option.code) {
+            <option [value]="option.code">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="categoryCode">申請区分</label>
+        <select id="categoryCode" class="field__input" formControlName="categoryCode">
+          <option value="">すべて</option>
+          @for (category of categories(); track category.code) {
+            <option [value]="category.code">{{ category.name }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="search-panel__actions">
+      <!-- type="submit" なので (ngSubmit) が発火する -->
+      <button type="submit" class="btn btn--primary">検索</button>
+      <button type="button" class="btn" (click)="onClear()">条件クリア</button>
+    </div>
+  </form>
+
+  <!-- ===================== 検索結果 ===================== -->
+  <div class="result">
+    @if (page().content.length > 0) {
+      <div class="table-wrapper">
+        <table class="table">
+          <caption class="table__caption">
+            申請の検索結果
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">申請番号</th>
+              <th scope="col">申請者氏名</th>
+              <th scope="col">申請区分</th>
+              <th scope="col">ステータス</th>
+              <th scope="col">申請日</th>
+              <th scope="col" class="table__col--actions">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (application of page().content; track application.id) {
+              <tr>
+                <td class="table__cell--no">{{ application.applicationNo }}</td>
+                <td>{{ application.applicantName }}</td>
+                <td>{{ application.categoryName }}</td>
+                <td>
+                  <!-- 子コンポーネントへ input で値を渡す -->
+                  <app-status-badge
+                    [status]="application.status"
+                    [label]="application.statusLabel"
+                  />
+                </td>
+                <!--
+                  date パイプで表示形式を整える。
+                  パイプは「値の見せ方を変える」仕組みで、元データは変更しない
+                -->
+                <td>{{ application.appliedOn | date: 'yyyy/MM/dd' }}</td>
+                <td class="table__col--actions">
+                  <a class="link" [routerLink]="['/applications', application.id]">詳細</a>
+                  <a class="link" [routerLink]="['/applications', application.id, 'edit']">編集</a>
+                  <button type="button" class="link link--danger" (click)="onDelete(application)">
+                    削除
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 子からの (pageChange) 通知を受け取る -->
+      <app-pagination
+        [page]="page().page"
+        [totalPages]="page().totalPages"
+        [totalElements]="page().totalElements"
+        [size]="page().size"
+        (pageChange)="onPageChange($event)"
+      />
+    } @else if (loaded()) {
+      <!-- @else if は @if と対になる分岐。旧構文では *ngIf を2つ並べる必要があった -->
+      <p class="empty">条件に一致する申請はありません。</p>
+    }
+  </div>
+</section>

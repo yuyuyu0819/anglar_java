@@ -1,0 +1,42 @@
+# ============================================================================
+#  h2 プロファイル … PostgreSQL を使わず H2 インメモリDBで動かす
+#
+#    .\start-backend.ps1 -H2
+#    または
+#    .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=h2"
+#
+#  用途:
+#    1. PostgreSQL のセットアップ前や、サービスを起動したくないときの動作確認
+#    2. 自動テスト（@ActiveProfiles("h2") を付けたテストクラスが使用）
+#
+#  インメモリなのでアプリを停止するとデータは消える。
+#  起動ごとに schema.sql / data.sql が実行され、常に同じ初期状態から始まる。
+#  → テストが実行順に依存しなくなるという利点がある。
+# ============================================================================
+
+spring:
+  datasource:
+    # jdbc:h2:mem:<DB名> でメモリ上のDBを指定する。
+    #   DB_CLOSE_DELAY=-1   … 最後の接続が閉じてもDBを破棄しない（JVMが生きている間は保持）
+    #   DB_CLOSE_ON_EXIT=FALSE … JVM終了時の自動クローズを無効化（警告抑止）
+    url: jdbc:h2:mem:sampledb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
+    hikari:
+      # インメモリDBなので接続プールは小さくてよい
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+  # 起動時に必ずテーブルを作り直す
+  sql:
+    init:
+      mode: always
+
+  # ブラウザから http://localhost:8080/h2-console でDBの中身を直接確認できる
+  #   JDBC URL: jdbc:h2:mem:sampledb / User: sa / Password: （空欄）
+  #   ※ 学習用の設定。本番環境では必ず無効にする
+  h2:
+    console:
+      enabled: true
+      path: /h2-console

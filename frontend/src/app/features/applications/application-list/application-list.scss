@@ -1,0 +1,48 @@
+/*
+  この画面だけで使うスタイル。
+
+  Angular のコンポーネントスタイルは既定でそのコンポーネントの中にしか効かない
+  （ビルド時に _ngcontent-xxx のような属性が付与されてスコープが切られる）。
+  そのため他画面のレイアウトを壊す心配がなく、クラス名の衝突も起きにくい。
+
+  複数画面で使う共通スタイル（.btn / .field / .table など）は
+  src/styles.scss に置いている。
+*/
+
+.search-panel {
+  padding: 1rem 1.25rem 1.25rem;
+  background: #f7f9fc;
+  border: 1px solid #d8e1ec;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+
+  &__fields {
+    display: grid;
+    /* 画面幅に応じて列数が変わる。最小16remを確保しつつ可能な限り並べる */
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e9f2;
+  }
+}
+
+.table__cell--no {
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  white-space: nowrap;
+}
+
+.table__col--actions {
+  width: 1%;
+  white-space: nowrap;
+
+  .link + .link,
+  .link + button {
+    margin-left: 0.75rem;
+  }
+}

@@ -1,0 +1,107 @@
+<section class="page">
+  <!--
+    @if (expr; as alias) { ... } は「値が真なら、その値を別名で使う」構文。
+    application() は null になり得るため、エイリアスで取り出してから参照すると
+    テンプレート内で毎回 null チェックが不要になる（旧 *ngIf="x as y" と同じ）。
+  -->
+  @if (application(); as app) {
+    <header class="page__header">
+      <div>
+        <p class="breadcrumb">
+          <a class="link" routerLink="/applications">申請一覧</a>
+          <span aria-hidden="true">›</span>
+          <span>詳細</span>
+        </p>
+        <h1 class="page__title">申請詳細</h1>
+      </div>
+      <div class="page__actions">
+        @if (!isClosed(app.status)) {
+          <a class="btn btn--primary" [routerLink]="['/applications', app.id, 'edit']">編集</a>
+        }
+        <button type="button" class="btn btn--danger" (click)="onDelete()">削除</button>
+        <a class="btn" routerLink="/applications">一覧へ戻る</a>
+      </div>
+    </header>
+
+    <!--
+      定義リスト（dl/dt/dd）で項目名と値を並べている。
+      テーブルではなく dl を使うのは、1件の属性を示すのに意味的に適切なため
+      （スクリーンリーダーが項目名と値の対応を読み上げられる）
+    -->
+    <dl class="detail">
+      <div class="detail__row">
+        <dt class="detail__label">申請番号</dt>
+        <dd class="detail__value detail__value--mono">{{ app.applicationNo }}</dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">ステータス</dt>
+        <dd class="detail__value">
+          <app-status-badge [status]="app.status" [label]="app.statusLabel" />
+        </dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">申請者氏名</dt>
+        <dd class="detail__value">{{ app.applicantName }}</dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">メールアドレス</dt>
+        <dd class="detail__value">{{ app.applicantEmail }}</dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">申請区分</dt>
+        <dd class="detail__value">{{ app.categoryName }}（{{ app.categoryCode }}）</dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">申請日</dt>
+        <dd class="detail__value">{{ app.appliedOn | date: 'yyyy年M月d日' }}</dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">備考</dt>
+        <!-- 値が無いときに空欄のままだと「表示漏れ」と区別できないので明示する -->
+        <dd class="detail__value">{{ app.note || '（未入力）' }}</dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">登録日時</dt>
+        <dd class="detail__value">{{ app.createdAt | date: 'yyyy/MM/dd HH:mm' }}</dd>
+      </div>
+      <div class="detail__row">
+        <dt class="detail__label">最終更新日時</dt>
+        <dd class="detail__value">
+          {{ app.updatedAt | date: 'yyyy/MM/dd HH:mm' }}
+          <span class="detail__note">（バージョン: {{ app.version }}）</span>
+        </dd>
+      </div>
+    </dl>
+
+    <!-- ===================== ステータス変更 ===================== -->
+    <section class="status-panel">
+      <h2 class="status-panel__title">ステータス変更</h2>
+
+      @if (nextStatusOptions().length > 0) {
+        <p class="status-panel__description">
+          現在のステータス「{{ app.statusLabel }}」から変更できる操作を表示しています。
+          変更可能な遷移はサーバ側の業務ルールで決まります。
+        </p>
+        <div class="status-panel__actions">
+          @for (option of nextStatusOptions(); track option.code) {
+            <button type="button" class="btn btn--primary" (click)="onChangeStatus(option)">
+              「{{ option.label }}」にする
+            </button>
+          }
+        </div>
+      } @else {
+        <p class="status-panel__description">
+          ステータスが「{{ app.statusLabel }}」のため、これ以上の変更はできません。
+        </p>
+      }
+    </section>
+  } @else if (notFound()) {
+    <div class="page__header">
+      <h1 class="page__title">申請詳細</h1>
+    </div>
+    <p class="empty">
+      指定された申請は見つかりませんでした。削除された可能性があります。<br />
+      <a class="link" routerLink="/applications">申請一覧へ戻る</a>
+    </p>
+  }
+</section>

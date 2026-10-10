@@ -1,0 +1,133 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <p class="breadcrumb">
+        <a class="link" routerLink="/applications">申請一覧</a>
+        <span aria-hidden="true">›</span>
+        <span>{{ pageTitle() }}</span>
+      </p>
+      <h1 class="page__title">{{ pageTitle() }}</h1>
+      <p class="page__description">
+        <span class="required-mark">*</span> は必須項目です。
+        @if (isEditMode() && current(); as app) {
+          <br />
+          申請番号: <strong>{{ app.applicationNo }}</strong> / 現在のステータス:
+          <strong>{{ app.statusLabel }}</strong>
+        }
+      </p>
+    </div>
+  </header>
+
+  <!--
+    [formGroup] でコンポーネント側の FormGroup と結びつけ、
+    各 input は formControlName で対応するコントロールを指定する。
+
+    (ngSubmit) はフォーム送信時に発火する。
+    ボタンの (click) ではなく ngSubmit を使うと、
+    Enterキーでの送信も拾えるのでフォームでは必ずこちらを使う。
+  -->
+  <form class="form" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+    <div class="field">
+      <label class="field__label" for="applicantName">
+        申請者氏名<span class="required-mark">*</span>
+      </label>
+      <input
+        id="applicantName"
+        type="text"
+        class="field__input"
+        formControlName="applicantName"
+        maxlength="100"
+        autocomplete="off"
+      />
+      <!--
+        エラーメッセージ表示は共通コンポーネントに委譲している。
+        control には FormControl 自体を渡す（form.get('...') で取得）
+      -->
+      <app-field-error
+        [control]="form.get('applicantName')"
+        label="申請者氏名"
+        [submitted]="submitted()"
+        [serverMessage]="serverErrorOf('applicantName')"
+      />
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="applicantEmail">
+        メールアドレス<span class="required-mark">*</span>
+      </label>
+      <input
+        id="applicantEmail"
+        type="email"
+        class="field__input"
+        formControlName="applicantEmail"
+        maxlength="255"
+        autocomplete="off"
+      />
+      <app-field-error
+        [control]="form.get('applicantEmail')"
+        label="メールアドレス"
+        [submitted]="submitted()"
+        [serverMessage]="serverErrorOf('applicantEmail')"
+      />
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="categoryCode">
+        申請区分<span class="required-mark">*</span>
+      </label>
+      <select id="categoryCode" class="field__input" formControlName="categoryCode">
+        <option value="">選択してください</option>
+        @for (category of categories(); track category.code) {
+          <option [value]="category.code">{{ category.name }}</option>
+        }
+      </select>
+      <app-field-error
+        [control]="form.get('categoryCode')"
+        label="申請区分"
+        [submitted]="submitted()"
+        [serverMessage]="serverErrorOf('categoryCode')"
+      />
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="appliedOn">申請日<span class="required-mark">*</span></label>
+      <input id="appliedOn" type="date" class="field__input field__input--date" formControlName="appliedOn" />
+      <p class="field__hint">未来の日付は指定できません。</p>
+      <app-field-error
+        [control]="form.get('appliedOn')"
+        label="申請日"
+        [submitted]="submitted()"
+        [serverMessage]="serverErrorOf('appliedOn')"
+      />
+    </div>
+
+    <div class="field">
+      <label class="field__label" for="note">備考</label>
+      <textarea
+        id="note"
+        class="field__input field__input--textarea"
+        formControlName="note"
+        rows="4"
+        maxlength="1000"
+      ></textarea>
+      <app-field-error
+        [control]="form.get('note')"
+        label="備考"
+        [submitted]="submitted()"
+        [serverMessage]="serverErrorOf('note')"
+      />
+    </div>
+
+    <div class="form__actions">
+      <!-- 処理中はボタンを無効化して二重送信を防ぐ -->
+      <button type="submit" class="btn btn--primary" [disabled]="saving()">
+        {{ saving() ? '送信中...' : isEditMode() ? '更新する' : '登録する' }}
+      </button>
+      @if (isEditMode() && current(); as app) {
+        <a class="btn" [routerLink]="['/applications', app.id]">キャンセル</a>
+      } @else {
+        <a class="btn" routerLink="/applications">キャンセル</a>
+      }
+    </div>
+  </form>
+</section>

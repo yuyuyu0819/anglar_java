@@ -1,0 +1,104 @@
+/* ===== 画面上部の「本文へスキップ」リンク =====
+   キーボード操作の利用者が、毎回ナビゲーションを読み飛ばせるようにするための配慮。
+   官公庁のシステムはウェブアクセシビリティ（JIS X 8341-3）への準拠が
+   求められることが多く、こうした実装が要件に入ってくる。
+   通常は画面外に隠し、フォーカスが当たったときだけ表示する。 */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1200;
+
+  &:focus {
+    left: 0.5rem;
+    top: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    background: #ffffff;
+    border: 2px solid var(--color-primary);
+    border-radius: 3px;
+  }
+}
+
+.site-header {
+  background: var(--color-primary);
+  color: #ffffff;
+
+  &__inner {
+    max-width: var(--layout-max-width);
+    margin: 0 auto;
+    padding: 0.9rem 1.5rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  &__env {
+    margin: 0;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid rgb(255 255 255 / 55%);
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+}
+
+.site-nav {
+  background: #ffffff;
+  border-bottom: 2px solid var(--color-primary);
+
+  &__list {
+    max-width: var(--layout-max-width);
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    gap: 0.25rem;
+    list-style: none;
+  }
+
+  &__link {
+    display: block;
+    padding: 0.75rem 1.1rem;
+    color: var(--color-primary);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    border-bottom: 3px solid transparent;
+
+    &:hover {
+      background: #eef3fa;
+    }
+  }
+
+  &__link--active {
+    border-bottom-color: var(--color-accent);
+    background: #eef3fa;
+  }
+}
+
+.site-main {
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 3rem;
+  min-height: 60vh;
+}
+
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  background: #f4f6f9;
+
+  &__text {
+    max-width: var(--layout-max-width);
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    font-size: 0.75rem;
+    color: #666666;
+  }
+}

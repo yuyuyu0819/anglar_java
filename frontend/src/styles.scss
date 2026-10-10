@@ -1,0 +1,295 @@
+/* =============================================================================
+   全画面に適用されるグローバルスタイル。
+
+   Angular のコンポーネントスタイル（*.component.scss）は
+   そのコンポーネント内にしか効かないのに対し、
+   このファイルに書いたものはアプリ全体に適用される。
+
+   そのため、ここに置くのは
+     - CSS変数（デザイントークン）
+     - リセット／ベーススタイル
+     - 全画面で使い回す部品クラス（.btn / .field / .table など）
+   に限定する。画面固有のスタイルは各コンポーネントの scss に書く。
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   デザイントークン。
+   色やサイズを変数化しておくと、配色変更が1か所で済む。
+   官公庁システムは自治体ごとにカラーを変えることもあるため、効果が大きい。
+   --------------------------------------------------------------------------- */
+:root {
+  --color-primary: #1b3b66; /* 濃紺。ヘッダーや見出しに使用 */
+  --color-accent: #c8a200; /* 選択状態のアクセント */
+  --color-link: #1a4f9c;
+  --color-danger: #a52121;
+  --color-border: #d8e1ec;
+  --color-text: #212121;
+  --color-muted: #666666;
+  --layout-max-width: 72rem;
+}
+
+/* ---------------------------------------------------------------------------
+   ベーススタイル
+   --------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* 1rem = 16px を基準にする */
+  font-size: 100%;
+}
+
+body {
+  margin: 0;
+  /* 日本語環境で読みやすいフォント指定。OSごとに存在するものへ順にフォールバックする */
+  font-family:
+    'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', system-ui,
+    sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-text);
+  background: #ffffff;
+}
+
+h1,
+h2,
+h3,
+p,
+dl,
+dd {
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   画面共通のレイアウト
+   --------------------------------------------------------------------------- */
+.page {
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  &__title {
+    font-size: 1.375rem;
+    color: var(--color-primary);
+    /* 見出しの左に縦線を入れて、帳票的な落ち着いた印象にする */
+    padding-left: 0.65rem;
+    border-left: 5px solid var(--color-primary);
+    line-height: 1.4;
+  }
+
+  &__description {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--color-muted);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   ボタン
+   --------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.1rem;
+  border: 1px solid #b9c6d6;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #33475e;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: #f0f4f9;
+  }
+
+  /* キーボード操作時に、どこにフォーカスがあるか必ず分かるようにする。
+     outline を消すだけの実装はアクセシビリティ上の不具合になる */
+  &:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+      background: #15304f;
+    }
+  }
+
+  &--danger {
+    background: #ffffff;
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+
+    &:hover:not(:disabled) {
+      background: #fbeded;
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   リンク
+   --------------------------------------------------------------------------- */
+.link {
+  color: var(--color-link);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: none;
+  }
+
+  &--danger {
+    color: var(--color-danger);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   入力項目
+   --------------------------------------------------------------------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+
+  &__label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #324a66;
+    margin-bottom: 0.35rem;
+  }
+
+  &__input {
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid #adbccd;
+    border-radius: 3px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: var(--color-text);
+    background: #ffffff;
+
+    &:focus-visible {
+      outline: 3px solid var(--color-accent);
+      outline-offset: 0;
+      border-color: var(--color-primary);
+    }
+  }
+
+  /* Angular が自動で付けるクラスを使った見た目の制御。
+       ng-touched … 一度フォーカスを外した
+       ng-invalid … バリデーションエラーがある
+     この組み合わせで「触ったのに不正な項目」だけを赤枠にできる。 */
+  &__input.ng-touched.ng-invalid {
+    border-color: var(--color-danger);
+    background: #fffafa;
+  }
+
+  &__hint {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+}
+
+.required-mark {
+  color: var(--color-danger);
+  margin-left: 0.2rem;
+}
+
+/* ---------------------------------------------------------------------------
+   一覧テーブル
+   --------------------------------------------------------------------------- */
+.table-wrapper {
+  /* 画面が狭いときに横スクロールさせる。
+     テーブル自体を縮めると日本語が折り返されて読みにくくなるため */
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  &__caption {
+    /* 表の説明。スクリーンリーダー向けに残し、画面上は隠す */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  th,
+  td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid #e4ebf3;
+    vertical-align: middle;
+  }
+
+  thead th {
+    background: #eef3fa;
+    color: #27405c;
+    font-weight: 700;
+    white-space: nowrap;
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  tbody tr:hover {
+    background: #f8fafd;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   0件表示
+   --------------------------------------------------------------------------- */
+.empty {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--color-muted);
+  background: #f7f9fc;
+  border: 1px dashed var(--color-border);
+  border-radius: 4px;
+  font-size: 0.9375rem;
+  line-height: 1.9;
+}

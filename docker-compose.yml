@@ -1,0 +1,85 @@
+# ============================================================================
+#  申請管理システム（サンプル）開発用インフラ
+#
+#    起動:  docker compose up -d        （または .\start-database.ps1）
+#    停止:  docker compose down         （データは残る）
+#    破棄:  docker compose down -v      （ボリュームも削除してまっさらに戻す）
+#    ログ:  docker compose logs -f postgres
+#
+#  Windows にインストール済みの PostgreSQL サービスは使いません。
+#  （どちらも 5432 を使うため、同時に起動するとポートが衝突します。
+#    Windows 側のサービスは停止したままにしておいてください）
+# ============================================================================
+
+services:
+  postgres:
+    # Debian ベースではなく alpine を選ぶとイメージが小さく起動も速い。
+    # 実案件では本番と同じマイナーバージョンまで固定するのが望ましい
+    # （:18 のようなタグはマイナー更新で中身が変わるため、
+    #   厳密な再現性が必要なら :18.1 のように指定する）
+    image: postgres:18-alpine
+    container_name: shinsei-postgres
+
+    environment:
+      # スーパーユーザー。アプリからは使わず、管理作業専用
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+
+      # initdb に渡す引数。
+      #   --encoding=UTF8 … 日本語を扱うので必須
+      #   --locale=C      … 文字列の並び順をバイト順にする（決定的・高速）
+      #
+      # 日本語の辞書順照合が必要な場合は ICU を使う:
+      #   --locale-provider=icu --icu-locale=ja-JP --locale=C
+      # ただし漢字は読み順にはならないため、
+      # 実案件では「氏名カナ」列を別に持ってそれでソートする設計が一般的。
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+
+      # コンテナ内のタイムゾーン。ログやCURRENT_TIMESTAMPの表示に影響する
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
+
+    ports:
+      # ホスト側のポートは環境変数 POSTGRES_PORT で変更できる（既定 5432）。
+      # Windows の PostgreSQL サービスと併用したい場合は 5433 などにする:
+      #   $env:POSTGRES_PORT = '5433'; docker compose up -d
+      - '${POSTGRES_PORT:-5432}:5432'
+
+    volumes:
+      # 名前付きボリューム。コンテナを作り直してもデータが残る。
+      # これが無いと `docker compose down` でデータが消える。
+      #
+      # 【PostgreSQL 18 からの変更点（実際にハマる箇所）】
+      # 17以前の公式イメージは /var/lib/postgresql/data をマウントする慣例だったが、
+      # 18以降は「/var/lib/postgresql をマウントし、その下に
+      # バージョン別ディレクトリ(18/docker)を作る」方式に変わった。
+      # 旧来の .../data をマウントすると
+      #   Error: ... these Docker images are configured to store database data
+      #          in a format which is compatible with "pg_ctlcluster"
+      # で起動に失敗する。
+      # 将来 pg_upgrade でメジャーバージョンアップする際に
+      # マウント境界をまたがずに済むようにするための変更。
+      - pgdata:/var/lib/postgresql
+
+      # 初回起動時（＝ボリュームが空のとき）だけ、このディレクトリの
+      # *.sql / *.sh がファイル名順に自動実行される。
+      # 2回目以降は実行されない点に注意（やり直したいときは down -v）
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      # DBが接続を受け付けられる状態かを確認する。
+      # これが healthy になるまでアプリを起動しても接続できない
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+    # Docker Desktop の起動時に自動で立ち上がる。
+    # 明示的に docker compose down / stop した場合は自動起動しない
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: shinsei_pgdata

@@ -1,0 +1,157 @@
+# ============================================================================
+#  申請管理システム（サンプル）アプリケーション設定
+#
+#  Spring Boot は src/main/resources/application.yml を自動で読み込む。
+#
+#  【プロファイル構成】
+#    （プロファイル指定なし） … PostgreSQL に接続。テーブルは作成済みの前提
+#    init                     … 起動時に schema.sql / data.sql を実行して初期化する
+#    h2                       … PostgreSQL を使わず H2 インメモリDBで動かす
+#
+#    プロファイル固有の設定は application-{プロファイル名}.yml に書く。
+#    このファイルの設定が土台になり、プロファイル側の設定が上書きする（マージされる）。
+#
+#    起動例)
+#      .\mvnw.cmd spring-boot:run                                      既定(PostgreSQL)
+#      .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=init"    初期化して起動
+#      java -jar target\backend.jar --spring.profiles.active=h2        H2で起動
+# ============================================================================
+
+server:
+  port: 8080
+  # エラー時に例外クラス名やスタックトレースをレスポンスに含めない（情報漏えい対策）
+  error:
+    include-message: never
+    include-stacktrace: never
+  # Tomcat のアクセスログは RequestLoggingFilter で代替しているため無効
+  tomcat:
+    accesslog:
+      enabled: false
+
+spring:
+  application:
+    name: backend
+
+  # --------------------------------------------------------------------------
+  # データソース（PostgreSQL）
+  #
+  # 【${変数:既定値} の記法】
+  #   環境変数（または -D のシステムプロパティ）があればその値を、
+  #   無ければ : の右側の既定値を使う。
+  #   これにより「開発者はそのまま動き、本番は環境変数で差し替える」が実現できる。
+  #
+  #   例) 本番環境での渡し方
+  #     set DB_HOST=db.example.go.jp
+  #     set DB_PASSWORD=********
+  #     java -jar backend.jar
+  #
+  # 【重要】本番のパスワードをこのファイルに書いてはいけない。
+  #   設定ファイルはGitに入るため、認証情報は必ず外部から注入する
+  #   （環境変数、AWS Secrets Manager、HashiCorp Vault、Kubernetes Secret など）。
+  #   ここに書いてある shinsei_pass は学習用のローカル開発パスワード。
+  # --------------------------------------------------------------------------
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:shinsei_db}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:shinsei_app}
+    password: ${DB_PASSWORD:shinsei_pass}
+    hikari:
+      # コネクションプール = DB接続の使い回し。接続の確立はコストが高いため
+      # あらかじめ張っておいた接続を貸し借りする。
+      # maximum-pool-size は「同時に使えるDB接続の最大本数」。
+      # PostgreSQL 側の max_connections (既定100) を超えないよう、
+      # アプリのインスタンス数 × この値 < max_connections にする必要がある。
+      maximum-pool-size: 10
+      minimum-idle: 2
+      # プールから接続を借りられるまで待つ上限(ms)。超えると例外になる
+      connection-timeout: 30000
+      # 使われていない接続を閉じるまでの時間(ms)
+      idle-timeout: 600000
+      # 接続を作り直すまでの最大寿命(ms)。DB側のタイムアウトより短くする
+      max-lifetime: 1800000
+      pool-name: SampleHikariPool
+
+  # schema.sql / data.sql の実行制御。
+  #   never  … 実行しない（既定。PostgreSQLの既存テーブルをそのまま使う）
+  #   always … 毎回実行する（init プロファイルで有効化）
+  # ※ schema.sql は DROP TABLE から始まるため、always にすると
+  #    既存データは消える。本番環境で always にしてはいけない。
+  #
+  # 本サンプルの schema.sql / data.sql は H2 と PostgreSQL の両方で動く書き方に
+  # 揃えてある。DB固有のDDLが必要になった場合は platform を指定すると
+  # schema-{platform}.sql / data-{platform}.sql も読み込まれる
+  #   例) spring.sql.init.platform: postgresql → schema-postgresql.sql
+  sql:
+    init:
+      mode: never
+      encoding: UTF-8
+
+  # JSON 変換（Jackson）の設定
+  jackson:
+    serialization:
+      # LocalDate を数値配列ではなく "2026-10-07" のISO文字列で出力する
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: always
+
+# ----------------------------------------------------------------------------
+# MyBatis
+# ----------------------------------------------------------------------------
+mybatis:
+  # XMLマッパーの置き場所
+  mapper-locations: classpath:mapper/*.xml
+  # XMLで型名を短く書けるようにする（jp.go...Application → Application）
+  type-aliases-package: jp.go.sample.backend.domain.model
+  configuration:
+    # DBのスネークケース列名を Java のキャメルケースに自動変換する。
+    # これが true だと resultMap を書かずに resultType だけで済むケースが増える
+    map-underscore-to-camel-case: true
+    # SQLの実行時間が長すぎる場合に打ち切る（秒）
+    default-statement-timeout: 30
+    # NULL の項目にも setter を呼ぶ（Mapへのマッピング時に効く）
+    call-setters-on-nulls: true
+
+# ----------------------------------------------------------------------------
+# アプリ独自の設定（@Value で読む）
+# ----------------------------------------------------------------------------
+app:
+  cors:
+    # Angular の開発サーバを許可。複数指定はカンマ区切り
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+
+# ----------------------------------------------------------------------------
+# ログ
+# ----------------------------------------------------------------------------
+logging:
+  # Windows のコマンドプロンプトは既定が Shift_JIS(CP932) のため、
+  # ログの日本語が文字化けする。ターミナルで `chcp 65001` を実行してUTF-8に切り替えると直る
+  # （start-backend.ps1 は自動で設定している）
+  charset:
+    console: UTF-8
+    file: UTF-8
+  level:
+    root: INFO
+    jp.go.sample.backend: DEBUG
+    # Mapper インターフェースのパッケージを TRACE にすると
+    # 実行されたSQLとバインド値・取得件数がコンソールに出る。
+    # SQLが期待どおり組み立てられているかの確認はここを見るのが一番早い
+    jp.go.sample.backend.domain.repository: TRACE
+  pattern:
+    # RequestLoggingFilter が MDC に入れた requestId をログ行に出す。
+    # 同じIDの行だけ拾えば1リクエスト分の処理を追える
+    level: '%5p [%X{requestId:-        }]'
+
+# ----------------------------------------------------------------------------
+# Actuator（運用監視用エンドポイント）
+#   http://localhost:8080/actuator/health で死活監視できる
+#   DB接続が切れている場合は status が DOWN になる（db コンポーネントを見る）
+# ----------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

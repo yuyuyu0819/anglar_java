@@ -1,0 +1,24 @@
+<!doctype html>
+<!--
+  SPA（Single Page Application）の唯一のHTML。
+  ng build するとこのファイルに、生成されたJS/CSSへの <script> / <link> が差し込まれる。
+
+  lang="ja" を指定しておくと、スクリーンリーダーが日本語として読み上げ、
+  ブラウザの翻訳機能が誤作動しない。
+  <base href="/"> は Angular のルーターがURLを組み立てる基準になる。
+  （サブディレクトリ配下に配置する場合はここを書き換える）
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>申請管理システム</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Angular + Spring Boot 学習用の申請管理サンプル" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <!-- このタグが AppComponent（selector: 'app-root'）に置き換わる -->
+    <app-root></app-root>
+  </body>
+</html>

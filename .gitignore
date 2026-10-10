@@ -1,0 +1,27 @@
+# ---- Java / Maven ----
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.log
+
+# ---- Node / Angular ----
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+npm-debug.log*
+
+# ---- IDE ----
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.settings/
+.classpath
+.project
+
+# ---- OS ----
+Thumbs.db
+Desktop.ini
+.DS_Store

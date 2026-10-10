@@ -1,0 +1,31 @@
+# ============================================================================
+#  init プロファイル … DBの初期化（テーブル作成＋初期データ投入）
+#
+#    .\start-backend.ps1 -Init
+#    または
+#    .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=init"
+#
+#  このプロファイルで起動すると、接続先DBに対して
+#    src/main/resources/schema.sql → src/main/resources/data.sql
+#  が順に実行される。
+#
+#  【警告】schema.sql は DROP TABLE IF EXISTS から始まるため、
+#          既存のデータはすべて消えます。
+#          初回セットアップ時と、データをきれいな状態に戻したいときだけ使うこと。
+#          本番環境では絶対に使わない（実案件では Flyway / Liquibase で
+#          バージョン管理されたマイグレーションを使う）。
+#
+#  2回目以降の通常起動はプロファイル指定なしで行う:
+#    .\start-backend.ps1
+# ============================================================================
+
+spring:
+  sql:
+    init:
+      mode: always
+
+logging:
+  level:
+    # 実行されたDDL/DMLをログに出す。
+    # 「どのSQLでエラーになったか」を特定するのに必要
+    org.springframework.jdbc.datasource.init: DEBUG

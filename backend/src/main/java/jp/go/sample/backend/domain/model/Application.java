@@ -3,7 +3,7 @@ package jp.go.sample.backend.domain.model;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import lombok.Data;
+        import lombok.Data;
 
 /**
  * 申請エンティティ（DBの application テーブルに対応）。
